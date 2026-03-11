@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - Uni Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="assets/app.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+
+    <div class="container py-4">
+      <div class="page-title">
+        <div>
+          <h4><i class="bi bi-shield-lock me-1"></i> Admin</h4>
+          <p class="page-subtitle">Manage librarian accounts (admin only)</p>
+        </div>
+        <div class="pill"><i class="bi bi-person-badge"></i> Role-based access</div>
+      </div>
+
+      <div class="card card-hover">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-people me-1"></i> Manage Librarians</h5>
+            <button class="btn btn-sm btn-outline-secondary" id="refreshBtn">Refresh</button>
+          </div>
+          <div id="msg" class="mt-3"></div>
+
+          <form id="form" class="row g-2 mt-1">
+            <input type="hidden" name="librarian_id" />
+            <div class="col-md-3"><input class="form-control" name="name" placeholder="Name" required /></div>
+            <div class="col-md-3"><input class="form-control" name="username" placeholder="Username" required /></div>
+            <div class="col-md-3">
+              <input class="form-control" name="password" placeholder="Password" type="password" />
+              <div class="form-text">Leave blank to keep current password (when editing).</div>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" name="role" required>
+                <option value="librarian">librarian</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+            <div class="col-md-1 d-grid">
+              <button class="btn btn-primary" type="submit">Save</button>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="resetBtn">Reset</button>
+            </div>
+          </form>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-striped">
+              <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Role</th><th></th></tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { apiFetch, getLibrarian } from "./assets/api.js";
+      import { renderNav, requireAuth, showError, showSuccess, escapeHtml } from "./assets/common.js";
+
+      if (!requireAuth()) throw new Error("no auth");
+      renderNav("admin");
+
+      const me = getLibrarian();
+      const msg = document.getElementById("msg");
+      const rows = document.getElementById("rows");
+      const form = document.getElementById("form");
+
+      function reset() { form.reset(); form.librarian_id.value = ""; form.password.value = ""; }
+
+      async function load() {
+        msg.innerHTML = "";
+        try {
+          const data = await apiFetch("/librarians");
+          rows.innerHTML = data.map(u => `
+            <tr>
+              <td>${u.librarian_id}</td>
+              <td>${escapeHtml(u.name)}</td>
+              <td>${escapeHtml(u.username)}</td>
+              <td>${escapeHtml(u.role)}</td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-primary" data-e="${u.librarian_id}">Edit</button>
+                ${u.librarian_id === me?.librarian_id ? "" : `<button class="btn btn-sm btn-outline-danger ms-1" data-d="${u.librarian_id}">Delete</button>`}
+              </td>
+            </tr>`).join("");
+        } catch (e) {
+          showError(msg, e.message + " (Admin role required)");
+        }
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", () => load().catch(e => showError(msg, e.message)));
+      document.getElementById("resetBtn").addEventListener("click", reset);
+
+      rows.addEventListener("click", async (e) => {
+        const idE = e.target?.dataset?.e;
+        const idD = e.target?.dataset?.d;
+        if (idE) {
+          const list = await apiFetch(`/librarians`);
+          const u = list.find(x => x.librarian_id == idE);
+          form.librarian_id.value = u.librarian_id;
+          form.name.value = u.name;
+          form.username.value = u.username;
+          form.role.value = u.role;
+          form.password.value = "";
+        }
+        if (idD) {
+          if (!confirm("Delete this librarian?")) return;
+          await apiFetch(`/librarians/${idD}`, { method: "DELETE" });
+          showSuccess(msg, "Deleted.");
+          reset();
+          await load();
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        msg.innerHTML = "";
+        const body = Object.fromEntries(new FormData(form).entries());
+        const id = body.librarian_id;
+        delete body.librarian_id;
+        if (!body.password) delete body.password;
+        try {
+          if (id) await apiFetch(`/librarians/${id}`, { method: "PUT", body });
+          else {
+            if (!body.password) throw new Error("Password is required when creating a librarian");
+            await apiFetch("/librarians", { method: "POST", body });
+          }
+          showSuccess(msg, "Saved.");
+          reset();
+          await load();
+        } catch (err) { showError(msg, err.message); }
+      });
+
+      load().catch((e) => showError(msg, e.message));
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
