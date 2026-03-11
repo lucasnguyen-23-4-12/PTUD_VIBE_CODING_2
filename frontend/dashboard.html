@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard - Uni Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="assets/app.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app-nav"></div>
+
+    <div class="container py-4">
+      <div class="page-title">
+        <div>
+          <h4>Dashboard</h4>
+          <p class="page-subtitle">Overview and quick actions</p>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="pill"><i class="bi bi-link-45deg"></i> <a class="link-body-emphasis text-decoration-none" href="http://127.0.0.1:8000/docs" target="_blank">API Docs</a></span>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <div class="card card-hover">
+            <div class="card-body kpi">
+              <div>
+                <div class="label">Readers</div>
+                <div class="value" id="kpiReaders">—</div>
+              </div>
+              <div class="icon"><i class="bi bi-people"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-hover">
+            <div class="card-body kpi">
+              <div>
+                <div class="label">Titles</div>
+                <div class="value" id="kpiTitles">—</div>
+              </div>
+              <div class="icon"><i class="bi bi-journal-bookmark"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-hover">
+            <div class="card-body kpi">
+              <div>
+                <div class="label">Copies</div>
+                <div class="value" id="kpiCopies">—</div>
+              </div>
+              <div class="icon"><i class="bi bi-stack"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-hover">
+            <div class="card-body kpi">
+              <div>
+                <div class="label">Unreturned</div>
+                <div class="value" id="kpiUnreturned">—</div>
+              </div>
+              <div class="icon"><i class="bi bi-exclamation-circle"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="card card-hover">
+            <div class="card-body">
+              <h5 class="card-title mb-3"><i class="bi bi-lightning-charge"></i> Quick Actions</h5>
+              <div class="row g-2">
+                <div class="col-md-6 d-grid"><a class="btn btn-outline-primary" href="readers.html"><i class="bi bi-person-vcard me-1"></i> Readers</a></div>
+                <div class="col-md-6 d-grid"><a class="btn btn-outline-primary" href="books.html"><i class="bi bi-book me-1"></i> Books</a></div>
+                <div class="col-md-6 d-grid"><a class="btn btn-outline-primary" href="borrows.html"><i class="bi bi-arrow-left-right me-1"></i> Borrow / Return</a></div>
+                <div class="col-md-6 d-grid"><a class="btn btn-outline-primary" href="reports.html"><i class="bi bi-graph-up me-1"></i> Reports</a></div>
+              </div>
+              <div class="mt-3 footer-note">Tip: create a Major → Title → Copy before borrowing.</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="card card-hover">
+            <div class="card-body">
+              <h5 class="card-title mb-3"><i class="bi bi-check2-square"></i> MVP Rules</h5>
+              <ul class="mb-0">
+                <li>One reader can borrow only one copy at a time.</li>
+                <li>Borrow sets copy status to <code>borrowed</code>.</li>
+                <li>Return sets copy status to <code>available</code>.</li>
+                <li>Reports show unreturned borrows.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { apiFetch } from "./assets/api.js";
+      import { renderNav, requireAuth } from "./assets/common.js";
+
+      if (!requireAuth()) throw new Error("no auth");
+      renderNav("dashboard");
+
+      const set = (id, v) => (document.getElementById(id).textContent = v);
+
+      async function loadKpis() {
+        const [readers, titles, copies, unreturned] = await Promise.all([
+          apiFetch("/readers"),
+          apiFetch("/titles"),
+          apiFetch("/copies"),
+          apiFetch("/reports/unreturned-readers"),
+        ]);
+        set("kpiReaders", readers.length);
+        set("kpiTitles", titles.length);
+        set("kpiCopies", copies.length);
+        set("kpiUnreturned", unreturned.length);
+      }
+
+      loadKpis().catch(() => {});
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
