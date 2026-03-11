@@ -88,4 +88,3 @@ python -m http.server 5500
 Mở: `http://127.0.0.1:5500/login.html`
 
 Ghi chú: URL backend mặc định nằm ở `frontend/assets/api.js` (`API_BASE = http://127.0.0.1:8000`).
-
